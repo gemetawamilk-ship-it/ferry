@@ -1,0 +1,6 @@
+{
+  "name": "E-PESANTREN 360",
+  "description": "Satu Sistem untuk Mengelola Seluruh Kehidupan Pesantren - Platform SaaS Manajemen Pesantren Terpadu Multi-Tenant",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
