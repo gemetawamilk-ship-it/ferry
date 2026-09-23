@@ -26,7 +26,6 @@ import { ClassManagement } from './components/classes/ClassManagement';
 import { SubjectManagement } from './components/subjects/SubjectManagement';
 import { CurriculumManagement } from './components/curriculum/CurriculumManagement';
 import { ScheduleManagement } from './components/schedules/ScheduleManagement';
-import { AttendanceManagement } from './components/attendance/AttendanceManagement';
 import { AccessDenied } from './components/common/AccessDenied';
 import { api } from './services/api';
 import { DashboardData } from './types';
@@ -228,17 +227,6 @@ const MainLayout: React.FC = () => {
           );
         }
         return <ScheduleManagement />;
-
-      case 'attendance':
-        if (!hasPermission('attendance.view')) {
-          return (
-            <AccessDenied
-              requiredPermission="attendance.view"
-              onBack={() => setCurrentTab('dashboard')}
-            />
-          );
-        }
-        return <AttendanceManagement />;
 
       default:
         return renderDashboardByRole();
