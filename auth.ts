@@ -10,39 +10,65 @@ export interface AuthenticatedRequest extends Request {
   token?: string;
 }
 
-// In-Memory active sessions store
+// Stateless signed sessions for Vercel/serverless deployments.
+// The token contains only the user/tenant identifiers and expiry; the signature
+// prevents tampering and works across separate function invocations.
 interface SessionData {
   userId: string;
   tenantId: string;
   expiresAt: number;
 }
 
-const sessions = new Map<string, SessionData>();
+const SESSION_SECRET = process.env.SESSION_SECRET || 'epesantren360-investor-demo-secret-change-me';
+
+function base64url(value: string): string {
+  return Buffer.from(value).toString('base64url');
+}
+
+function sign(value: string): string {
+  return crypto.createHmac('sha256', SESSION_SECRET).update(value).digest('base64url');
+}
 
 export function createSession(user: User): string {
-  const token = `eps360_${crypto.randomBytes(32).toString('hex')}`;
-  // 7 days expiration
   const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
-  sessions.set(token, {
+  const payload = base64url(JSON.stringify({
     userId: user.id,
     tenantId: user.tenantId,
     expiresAt,
-  });
-  return token;
+  }));
+  return `eps360_${payload}.${sign(payload)}`;
 }
 
-export function revokeSession(token: string): boolean {
-  return sessions.delete(token);
+export function revokeSession(_token: string): boolean {
+  // Stateless tokens cannot be globally revoked without persistent storage.
+  // Logout still removes the browser token on the client.
+  return true;
 }
 
 export function getSession(token: string): SessionData | null {
-  const session = sessions.get(token);
-  if (!session) return null;
-  if (Date.now() > session.expiresAt) {
-    sessions.delete(token);
+  try {
+    if (!token.startsWith('eps360_')) return null;
+    const tokenBody = token.slice('eps360_'.length);
+    const separator = tokenBody.lastIndexOf('.');
+    if (separator <= 0) return null;
+
+    const payload = tokenBody.slice(0, separator);
+    const signature = tokenBody.slice(separator + 1);
+    const expected = sign(payload);
+
+    if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+      return null;
+    }
+
+    const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as SessionData;
+    if (!session.userId || !session.tenantId || !session.expiresAt || Date.now() > session.expiresAt) {
+      return null;
+    }
+
+    return session;
+  } catch {
     return null;
   }
-  return session;
 }
 
 // Authentication Middleware
